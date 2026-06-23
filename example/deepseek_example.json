@@ -1,0 +1,131 @@
+[
+{
+    "id": "example-uuid-for-record-1",
+    "title": "Example Article Title Placeholder",
+    "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+    "updated_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+    "mapping": {
+        "1": {
+            "id": "example-uuid-child-1",
+            "parent": "root",
+            "children": [
+                {
+                    "id": "example-uuid-grandchild-1",
+                    "message": {
+                        "files": [
+                            {
+                                "id": "example-file-uuid-1",
+                                "file_name": "Example File Name.docx"
+                            }
+                        ],
+                        "model": "deepseek-reasoner",
+                        "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+                        "fragments": [
+                            {
+                                "type": "REQUEST",
+                                "content": "Placeholder text for the request content."
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+},
+{
+    "id": "example-uuid-for-record-2",
+    "title": "Another Example Placeholder Title",
+    "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+    "updated_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+    "mapping": {
+        "1": {
+            "id": "example-uuid-child-2",
+            "parent": "root",
+            "children": []
+        },
+        "2": {
+            "id": "example-uuid-grandchild-2",
+            "message": {
+                "files": [],
+                "model": "deepseek-reasoner",
+                "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+                "fragments": [
+                    {
+                        "type": "THINK",
+                        "content": "Placeholder thought process text for the user query and required analysis."
+                    },
+                    {
+                        "type": "TOOL_SEARCH",
+                        "content": "Placeholder tool search content."
+                    },
+                    {
+                        "type": "THINK",
+                        "content": "Placeholder thought process regarding search results processing."
+                    },
+                    {
+                        "type": "TOOL_OPEN",
+                        "content": "Placeholder action for opening a resource."
+                    }
+                ]
+            }
+        },
+        "3": {
+            "id": "example-uuid-grandchild-3",
+            "message": {
+                "files": [],
+                "model": "deepseek-reasoner",
+                "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+                "fragments": [
+                    {
+                        "type": "THINK",
+                        "content": "Placeholder synthesis of the results to formulate the final answer."
+                    }
+                ]
+            }
+        },
+        "4": {
+            "id": "example-uuid-grandchild-4",
+            "message": {
+                "files": [],
+                "model": "deepseek-reasoner",
+                "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+                "fragments": [
+                    {
+                        "type": "RESPONSE",
+                        "content": "Placeholder detailed response text covering the requested topic in general terms."
+                    }
+                ]
+            }
+        }
+    }
+}
+,
+{
+    "id": "example-uuid-for-record-3",
+    "title": "A Third Example Placeholder Title",
+    "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+    "updated_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+    "mapping": {
+        "1": {
+            "id": "example-uuid-child-3",
+            "parent": "root",
+            "children": [
+                {
+                    "id": "example-uuid-grandchild-3",
+                    "message": {
+                        "files": [],
+                        "model": "deepseek-reasoner",
+                        "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+                        "fragments": [
+                            {
+                                "type": "REQUEST",
+                                "content": "Placeholder query content for the third example."
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
+]

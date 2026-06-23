@@ -1,0 +1,102 @@
+[
+    {
+        "uuid": "example-uuid-for-record-1",
+        "name": "Example Title",
+        "summary": "",
+        "created_at": "YYYY-MM-DDTHH:MM:SS.000000Z",
+        "updated_at": "YYYY-MM-DDTHH:MM:SS.000000Z",
+        "account": {
+            "uuid": "example-user-uuid"
+        },
+        "chat_messages": [
+            {
+                "uuid": "message-uuid-1",
+                "text": "Placeholder text",
+                "content": [
+                    {
+                        "start_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "stop_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "flags": null,
+                        "type": "text",
+                        "text": "Placeholder text"
+                    }
+                ],
+                "sender": "human",
+                "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "attachments": [],
+                "files": [],
+                "parent_message_uuid": "00000000-0000-4000-8000-000000000000"
+            },
+            {
+                "uuid": "message-uuid-2",
+                "text": "Placeholder solution",
+                "content": [
+                    {
+                        "start_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "stop_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "flags": null,
+                        "type": "text",
+                        "text": "Placeholder"
+                    }
+                ],
+                "sender": "assistant",
+                "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "attachments": [],
+                "files": [],
+                "parent_message_uuid": "019cf891-1ddf-78ef-9a9b-49a194210008"
+            }
+        ]
+    },
+    {
+        "uuid": "example-uuid-for-record-2",
+        "name": "Example Title",
+        "summary": "",
+        "created_at": "YYYY-MM-DDTHH:MM:SS.000000Z",
+        "updated_at": "YYYY-MM-DDTHH:MM:SS.000000Z",
+        "account": {
+            "uuid": "example-user-uuid"
+        },
+        "chat_messages": [
+            {
+                "uuid": "message-uuid-3",
+                "text": "Placeholder text",
+                "content": [
+                    {
+                        "start_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "stop_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "flags": null,
+                        "type": "text",
+                        "text": "Placeholder query"
+                    }
+                ],
+                "sender": "human",
+                "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "attachments": [],
+                "files": [],
+                "parent_message_uuid": "00000000-0000-4000-8000-000000000000"
+            },
+            {
+                "uuid": "message-uuid-4",
+                "text": "Placeholder solution",
+                "content": [
+                    {
+                        "start_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "stop_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+                        "flags": null,
+                        "type": "text",
+                        "text": "Placeholder advice"
+                    }
+                ],
+                "sender": "assistant",
+                "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
+                "attachments": [],
+                "files": [],
+                "parent_message_uuid": "019d153e-0dde-7393-8976-5914b5fb82a4"
+            }
+        ]
+    }
+]

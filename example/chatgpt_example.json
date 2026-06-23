@@ -1,0 +1,207 @@
+[
+  {
+    "conversation_id": "d5b2c1e7-a4b3-4f8b-9e3c-a2b6e0f8d1c4",
+    "conversation_template_id": null,
+    "create_time": 1676318523.511923,
+    "current_node": "example-new-guid-for-node",
+    "default_model_slug": null,
+    "id": "d5b2c1e7-a4b3-4f8b-9e3c-a2b6e0f8d1c4",
+    "is_archived": false,
+    "is_do_not_remember": null,
+    "is_read_only": null,
+    "is_starred": null,
+    "is_study_mode": false,
+    "mapping": {
+      "example-new-guid-for-node": {
+        "id": "example-message-guid-1",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example text here. Example text here. Example text here. Example text here. Example text here. Example text here."
+            ]
+          },
+          "create_time": 1676318684.408498,
+          "id": "example-message-guid-1",
+          "metadata": {
+            "model_slug": "text-davinci-002-render"
+          }
+        },
+        "parent": "new-guid-for-parent-1"
+      },
+      "new-guid-for-parent-1": {
+        "id": "example-message-guid-2",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example Title Example Text Example Title Example Text Example Text."
+            ]
+          },
+          "create_time": 1676318644.608435,
+          "id": "example-message-guid-2"
+        },
+        "parent": "new-guid-for-grandparent-1"
+      },
+      "example-message-guid-3": {
+        "id": "example-message-guid-3",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example Title Example Text Example Title Example Text. Example text here. Example text here. Example text here. Example text here."
+            ]
+          },
+          "create_time": 1676318523.513213,
+          "id": "example-message-guid-3"
+        },
+        "parent": "new-guid-for-grandparent-2"
+      },
+      "new-guid-for-grandparent-1": {
+        "id": "new-guid-for-grandparent-1",
+        "message": null,
+        "parent": null
+      },
+      "new-guid-for-grandparent-2": {
+        "id": "new-guid-for-grandparent-2",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example text here. Example text here. Example text here. Example text here."
+            ]
+          },
+          "create_time": 1676318582.437174,
+          "id": "new-message-guid-for-grandparent-2",
+          "metadata": {
+            "model_slug": "text-davinci-002-render"
+          }
+        },
+        "parent": "example-message-guid-3"
+      }
+    },
+    "memory_scope": "global_enabled",
+    "pinned_time": null,
+    "plugin_ids": null,
+    "title": "Example Title Placeholder",
+    "update_time": 1676318523.511923,
+    "voice": null
+  },
+  {
+    "conversation_id": "f8a3c1e7-b4d3-4c8b-9d7a-1e2f3g4h5i6j",
+    "conversation_template_id": null,
+    "create_time": 1709015000.585555,
+    "current_node": "example-new-guid-for-node-2",
+    "default_model_slug": null,
+    "id": "f8a3c1e7-b4d3-4c8b-9d7a-1e2f3g4h5i6j",
+    "is_archived": false,
+    "is_do_not_remember": null,
+    "is_read_only": null,
+    "is_starred": null,
+    "is_study_mode": false,
+    "mapping": {
+      "example-message-guid-4": {
+        "id": "example-message-guid-4",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example text here. Example text here. Example text here. Example text here."
+            ]
+          },
+          "create_time": 1709015000.585555,
+          "id": "example-message-guid-4",
+          "metadata": {
+            "model_slug": "text-davinci-002-render"
+          }
+        },
+        "parent": "new-guid-for-parent-3"
+      },
+      "new-guid-for-parent-3": {
+        "id": "example-message-guid-5",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example Title Example Text Example Title Example Text."
+            ]
+          },
+          "create_time": 1709015000.586734,
+          "id": "example-message-guid-5"
+        },
+        "parent": "new-guid-for-grandparent-3"
+      },
+      "example-message-guid-6": {
+        "id": "example-message-guid-6",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example Title Example Text Example Title Example Text."
+            ]
+          },
+          "create_time": 1709021830.291186,
+          "id": "example-message-guid-6"
+        },
+        "parent": "new-guid-for-grandparent-4"
+      },
+      "new-guid-for-grandparent-3": {
+        "id": "new-guid-for-grandparent-3",
+        "message": null,
+        "parent": null
+      },
+      "new-guid-for-grandparent-4": {
+        "id": "new-guid-for-grandparent-4",
+        "message": {
+          "author": {
+            "name": null,
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Example Title Example Text Example Title Example Text."
+            ]
+          },
+          "create_time": 1709021820.937855,
+          "id": "example-message-guid-7"
+        },
+        "parent": "example-message-guid-6"
+      }
+    },
+    "memory_scope": "global_enabled",
+    "pinned_time": null,
+    "plugin_ids": null,
+    "title": "Example Title Placeholder",
+    "update_time": 1709021830.293994,
+    "voice": null
+  }
+]

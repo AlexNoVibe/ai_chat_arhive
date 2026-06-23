@@ -1,0 +1,198 @@
+{
+  "success": true,
+  "request_id": "example-uuid-for-record",
+  "data": [
+    {
+      "id": "example-uuid-for-record",
+      "user_id": "example-user-uuid",
+      "title": "Example Title for Article",
+      "chat": {
+        "history": {
+          "messages": {
+            "message-id-1": {
+              "id": "message-id-1",
+              "role": "user",
+              "content": "Example question",
+              "models": [
+                "Example Model Name"
+              ],
+              "chat_type": "t2t",
+              "sub_chat_type": "t2t",
+              "edited": false,
+              "error": null,
+              "extra": {
+                "meta": {
+                  "subChatType": "t2t"
+                }
+              },
+              "feature_config": {
+                "thinking_enabled": true,
+                "output_schema": "phase",
+                "instructions": null,
+                "research_mode": "normal",
+                "auto_thinking": true,
+                "thinking_mode": "Auto",
+                "thinking_format": "summary",
+                "auto_search": true
+              },
+              "parentId": null,
+              "turn_id": null,
+              "childrenIds": [
+                "example-child-1",
+                "example-child-2"
+              ],
+              "files": [
+                {
+                  "id": "example-file-uuid",
+                  "name": "Example File Name.docx",
+                  "file_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  "type": "file",
+                  "file_class": "document",
+                  "size": 1024,
+                  "url": "https://example.com/placeholder",
+                  "file": {
+                    "created_at": 0,
+                    "data": {},
+                    "filename": "Example File Name.docx",
+                    "hash": null,
+                    "id": "example-file-uuid",
+                    "user_id": "example-user-uuid",
+                    "meta": {
+                      "name": "Example File Name.docx",
+                      "size": 1024,
+                      "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                      "parse_meta": {
+                        "parse_status": "success"
+                      }
+                    },
+                    "update_at": 0,
+                    "lastModified": 0,
+                    "name": "Example File Name.docx",
+                    "webkitRelativePath": "",
+                    "size": 1024,
+                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  },
+                  "collection_name": "",
+                  "progress": 0,
+                  "status": "uploaded",
+                  "greenNet": "success",
+                  "error": "",
+                  "itemId": "example-item-id",
+                  "showType": "file",
+                  "uploadTaskId": "example-task-id"
+                }
+              ],
+              "timestamp": 0
+            },
+            "message-id-2": {
+              "role": "assistant",
+              "content": "Example detailed analysis content based on the input prompt.",
+              "reasoning_content": null,
+              "chat_type": "t2t",
+              "sub_chat_type": "t2t",
+              "model": "qwen3.7-plus",
+              "modelName": "Qwen3.7-Plus",
+              "modelIdx": 0,
+              "id": "message-id-2",
+              "parentId": "message-id-1",
+              "childrenIds": [],
+              "feature_config": {
+                "thinking_enabled": true,
+                "output_schema": "phase",
+                "instructions": null,
+                "research_mode": "normal",
+                "auto_thinking": true,
+                "thinking_mode": "Auto",
+                "thinking_format": "summary",
+                "auto_search": true
+              },
+              "content_list": [
+                {
+                  "content": "",
+                  "phase": "thinking_summary",
+                  "status": "finished",
+                  "extra": {
+                    "summary_title": {
+                      "content": [
+                        "Placeholder analysis text ",
+                      ]
+                    },
+                    "summary_thought": {
+                      "content": [
+                        "I am carefully examining"
+                      ]
+                    }
+                  },
+                  "role": "assistant",
+                  "response_id": "message-id-2",
+                  "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 150,
+                    "characters": 0,
+                    "total_tokens": 250,
+                    "input_tokens_details": {
+                      "text_tokens": 100
+                    },
+                    "output_tokens_details": {
+                      "reasoning_tokens": 50,
+                      "text_tokens": 100
+                    }
+                  },
+                  "timestamp": 0
+                }
+              ],
+              "is_stop": false,
+              "edited": false,
+              "error": null,
+              "meta": {},
+              "extra": {
+                "meta": {
+                  "subChatType": "t2t"
+                },
+                "endTime": 0
+              }
+            }
+          }
+        },
+        "models": [
+          "qwen3.7-plus"
+        ],
+        "messages": [
+          {
+            "id": "message-id-1",
+            "role": "user",
+            "content": "Example prompt",
+            "models": [
+              "qwen3.7-plus"
+            ],
+            "chat_type": "t2t",
+            "sub_chat_type": "t2t",
+            "edited": false,
+            "error": null,
+            "extra": {
+              "meta": {
+                "subChatType": "t2t"
+              }
+            },
+            "feature_config": {
+              "thinking_enabled": true,
+              "output_schema": "phase",
+              "instructions": null,
+              "research_mode": "normal",
+              "auto_thinking": true,
+              "thinking_mode": "Auto",
+              "thinking_format": "summary",
+              "auto_search": true
+            },
+            "parentId": null,
+            "turn_id": null,
+            "childrenIds": [
+              "message-id-2"
+            ],
+            "files": []
+          }
+        ]
+      }
+    }
+  ],
+}
