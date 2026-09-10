@@ -1,0 +1,26 @@
+# Normalize line endings: the repository always stores LF,
+# regardless of the checkout OS.
+* text=auto
+
+# Force LF for these project file types (also on Windows checkouts)
+*.py    text eol=lf
+*.md    text eol=lf
+*.html  text eol=lf
+*.json  text eol=lf
+*.txt   text eol=lf
+*.sh    text eol=lf
+
+# Keep Windows-native scripts with CRLF
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binary files must never be normalized
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.zip   binary
+*.pdf   binary
+*.exe   binary

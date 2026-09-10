@@ -1,0 +1,5 @@
+chat_archive.html
+/chat_export/
+/.idea/
+/tests/__pycache__/
+__pycache__/
