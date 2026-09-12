@@ -1,0 +1,28 @@
+[
+  {
+    "header": "Режим ИИ",
+    "title": "Выполнен поиск Example question about git branch workflow.",
+    "titleUrl": "https://example.com/search?q=example",
+    "time": "2026-08-20T07:09:24",
+    "products": ["Режим ИИ"],
+    "activityControls": ["История действий в сервисах Поиска"],
+    "safeHtmlItem": [
+      {
+        "html": "<p><strong>Ваш запрос:</strong><br>Example question about git branch workflow.</p><p><strong>Ответ Поиска:</strong><br>Example answer text that explains how to set an upstream branch in general terms.</p>"
+      }
+    ]
+  },
+  {
+    "header": "Режим ИИ",
+    "title": "Выполнен поиск Example second query about cloning without the .git folder.",
+    "titleUrl": "https://example.com/search?q=example",
+    "time": "2026-08-20T07:09:24",
+    "products": ["Режим ИИ"],
+    "activityControls": ["История действий в сервисах Поиска"],
+    "safeHtmlItem": [
+      {
+        "html": "<p><strong>Ваш запрос:</strong><br>Example second query about cloning without the .git folder.</p><p><strong>Ответ Поиска:</strong><br>Example answer text about downloading project files without repository history.</p>"
+      }
+    ]
+  }
+]
