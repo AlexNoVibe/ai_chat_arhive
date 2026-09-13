@@ -1,60 +1,33 @@
 {
     "conversations": [
         {
-            "uuid": "example-uuid-for-record-1",
-            "name": "Placeholder Conversation Topic",
-            "summary": "",
-            "created_at": "YYYY-MM-DDTHH:MM:SSZ",
-            "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
-            "account": {
-                "uuid": "example-user-uuid"
+            "conversation": {
+                "id": "example-uuid-for-record-1",
+                "title": "Placeholder Conversation Topic",
+                "summary": "",
+                "create_time": "YYYY-MM-DDTHH:MM:SSZ",
+                "update_time": "YYYY-MM-DDTHH:MM:SSZ"
             },
-            "chat_messages": [
+            "responses": [
                 {
-                    "uuid": "message-uuid-1",
-                    "text": "Example query about the topic: what is the main subject?",
-                    "content": [
-                        {
-                            "start_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
-                            "stop_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
-                            "flags": null,
-                            "type": "text",
-                            "text": "Placeholder text for the query."
-                        }
-                    ],
-                    "sender": "human",
-                    "created_at": "YYYY-MM-DDTHH:MM:SSZ",
-                    "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
-                    "attachments": [],
-                    "files": [],
-                    "parent_message_uuid": "00000000-0000-4000-8000-000000000000"
-                }
-            ],
-            "sender": "human",
-            "created_at": "YYYY-MM-DDTHH:MM:SSZ",
-            "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
-            "attachments": [],
-            "files": [],
-            "parent_message_uuid": null
-        },
-        {
-            "uuid": "message-uuid-2",
-            "text": "Placeholder detailed response text based on the input prompt.",
-            "content": [
+                    "response": {
+                        "_id": "message-uuid-1",
+                        "sender": "human",
+                        "message": "Example query about the topic: what is the main subject?",
+                        "create_time": "YYYY-MM-DDTHH:MM:SSZ",
+                        "model": ""
+                    }
+                },
                 {
-                    "start_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
-                    "stop_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
-                    "flags": null,
-                    "type": "text",
-                    "text": "Placeholder response text. The analysis indicates that the subject is a reputable and high-quality publication."
+                    "response": {
+                        "_id": "message-uuid-2",
+                        "sender": "model",
+                        "message": "Placeholder detailed response text based on the input prompt.",
+                        "create_time": "YYYY-MM-DDTHH:MM:SSZ",
+                        "model": ""
+                    }
                 }
-            ],
-            "sender": "assistant",
-            "created_at": "YYYY-MM-DDTHH:MM:SSZ",
-            "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
-            "attachments": [],
-            "files": [],
-            "parent_message_uuid": "message-uuid-1"
+            ]
         }
     ],
     "projects": [
@@ -65,7 +38,4 @@
         }
     ],
     "tasks": []
-}
-,
-"request_id": "0ffffff"
 }

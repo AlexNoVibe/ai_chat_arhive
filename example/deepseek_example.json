@@ -5,29 +5,32 @@
     "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
     "updated_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
     "mapping": {
-        "1": {
-            "id": "example-uuid-child-1",
-            "parent": "root",
+        "root": {
+            "id": "example-root-1",
+            "parent": null,
             "children": [
-                {
-                    "id": "example-uuid-grandchild-1",
-                    "message": {
-                        "files": [
-                            {
-                                "id": "example-file-uuid-1",
-                                "file_name": "Example File Name.docx"
-                            }
-                        ],
-                        "model": "deepseek-reasoner",
-                        "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
-                        "fragments": [
-                            {
-                                "type": "REQUEST",
-                                "content": "Placeholder text for the request content."
-                            }
-                        ]
+                "1"
+            ]
+        },
+        "1": {
+            "id": "example-uuid-grandchild-1",
+            "parent": "root",
+            "children": [],
+            "message": {
+                "files": [
+                    {
+                        "id": "example-file-uuid-1",
+                        "file_name": "Example File Name.docx"
                     }
-                }
+                ],
+                "model": "deepseek-reasoner",
+                "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+                "fragments": [
+                    {
+                        "type": "REQUEST",
+                        "content": "Placeholder text for the request content."
+                    }
+                ]
             }
         }
     }
@@ -38,13 +41,26 @@
     "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
     "updated_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
     "mapping": {
+        "root": {
+            "id": "example-root-2",
+            "parent": null,
+            "children": [
+                "1"
+            ]
+        },
         "1": {
             "id": "example-uuid-child-2",
             "parent": "root",
-            "children": []
+            "children": [
+                "2"
+            ]
         },
         "2": {
             "id": "example-uuid-grandchild-2",
+            "parent": "1",
+            "children": [
+                "3"
+            ],
             "message": {
                 "files": [],
                 "model": "deepseek-reasoner",
@@ -71,6 +87,10 @@
         },
         "3": {
             "id": "example-uuid-grandchild-3",
+            "parent": "2",
+            "children": [
+                "4"
+            ],
             "message": {
                 "files": [],
                 "model": "deepseek-reasoner",
@@ -85,6 +105,8 @@
         },
         "4": {
             "id": "example-uuid-grandchild-4",
+            "parent": "3",
+            "children": [],
             "message": {
                 "files": [],
                 "model": "deepseek-reasoner",
@@ -98,32 +120,34 @@
             }
         }
     }
-}
-,
+},
 {
     "id": "example-uuid-for-record-3",
     "title": "A Third Example Placeholder Title",
     "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
     "updated_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
     "mapping": {
-        "1": {
-            "id": "example-uuid-child-3",
-            "parent": "root",
+        "root": {
+            "id": "example-root-3",
+            "parent": null,
             "children": [
-                {
-                    "id": "example-uuid-grandchild-3",
-                    "message": {
-                        "files": [],
-                        "model": "deepseek-reasoner",
-                        "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
-                        "fragments": [
-                            {
-                                "type": "REQUEST",
-                                "content": "Placeholder query content for the third example."
-                            }
-                        ]
+                "1"
+            ]
+        },
+        "1": {
+            "id": "example-uuid-grandchild-3",
+            "parent": "root",
+            "children": [],
+            "message": {
+                "files": [],
+                "model": "deepseek-reasoner",
+                "inserted_at": "YYYY-MM-DDTHH:MM:SS.000000+08:00",
+                "fragments": [
+                    {
+                        "type": "REQUEST",
+                        "content": "Placeholder query content for the third example."
                     }
-                }
+                ]
             }
         }
     }
