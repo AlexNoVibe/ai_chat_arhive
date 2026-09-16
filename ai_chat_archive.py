@@ -858,6 +858,97 @@ class GeminiParser(PathParser):
 
 
 # ──────────────────────────────────────
+# Google "My Activity" — Gemini Apps / AI Mode records:
+#   [{ header, title, time, products, details:[{url}],
+#      safeHtmlItem: [{ html: "<p>Ваш запрос:...</p><p>Ответ Поиска:...</p>" }] }]
+# ──────────────────────────────────────
+class GeminiActivityParser(BaseParser):
+    name = "gemini_activity"
+    title_fields = ["title"]
+    time_fields = ["time"]
+    id_fields = ["titleUrl", "url"]
+
+    def can_parse(self, data: Any) -> bool:
+        records = data if isinstance(data, list) else [data]
+        if not records:
+            return False
+        for rec in records:
+            if not isinstance(rec, dict):
+                return False
+            if "title" not in rec:
+                continue
+            items = rec.get("safeHtmlItem")
+            if (isinstance(items, list) and items and isinstance(items[0], dict)
+                    and isinstance(items[0].get("html"), str)):
+                return True
+        return False
+
+    def parse(self, data: Any, path: str) -> List[Chat]:
+        records = data if isinstance(data, list) else [data]
+        out: List[Chat] = []
+        for rec in records:
+            if not isinstance(rec, dict):
+                continue
+            chat = self._parse_one(rec, path)
+            if chat is not None:
+                out.append(chat)
+        return out
+
+    def _parse_one(self, rec: dict, path: str) -> Optional[Chat]:
+        title_raw = first_field(rec, *self.title_fields, default="")
+        header = first_field(rec, "header", "product", default="")
+        ts = norm_timestamp(first_field(rec, *self.time_fields, default=None))
+        products = rec.get("products") or []
+        model = products[0] if products and isinstance(products[0], str) else "unknown"
+
+        chat_id = ""
+        details = rec.get("details") or []
+        if details and isinstance(details[0], dict):
+            chat_id = str(first_field(details[0], "url", "name", default=""))
+        if not chat_id:
+            chat_id = first_field(rec, "titleUrl", default="")
+
+        html = ""
+        items = rec.get("safeHtmlItem") or []
+        if items and isinstance(items[0], dict):
+            html = first_field(items[0], "html", default="")
+        query, answer = self._split_items(html, title_raw)
+
+        messages: List[Message] = []
+        if query.strip():
+            messages.append(Message(role="user", content=query, timestamp=ts))
+        if answer.strip():
+            messages.append(Message(role="assistant", content=answer, timestamp=ts, model=model))
+        if not messages and title_raw.strip():
+            messages.append(Message(role="user", content=title_raw, timestamp=ts))
+
+        short = title_raw[:80]
+        title = (f"{header}: {short}" if header else short)
+        if len(title_raw) > 80:
+            title += "…"
+        return make_chat(title, model, messages, path, self.name,
+                         created_at=ts, chat_id=chat_id)
+
+    def _split_items(self, html: str, fallback: str):
+        text = self._html_to_text(html)
+        m = re.search(r"Ваш запрос:\s*(.*?)(?:\s*Ответ Поиска:\s*(.*))?$", text, re.S)
+        if m and (m.group(1) or m.group(2)):
+            return m.group(1).strip(), (m.group(2) or "").strip()
+        return fallback, text
+
+    @staticmethod
+    def _html_to_text(html: str) -> str:
+        s = re.sub(r"(?i)<br\s*/?>", "\n", html)
+        s = re.sub(r"(?i)</(?:p|li|h\d|div|tr)>", "\n", s)
+        s = re.sub(r"\s*<[^>]*>\s*", " ", s)
+        s = html_mod.unescape(s)
+        s = re.sub(r"(?<=/)\s+(?=\S)", "", s)
+        s = re.sub(r"[ \t]+", " ", s)
+        s = re.sub(r"\n{3,}", "\n\n", s)
+        return s.strip()
+
+
+# ──────────────────────────────────────
 # Raw top-level list of messages  [ {role, content}, ... ]
 # ──────────────────────────────────────
 class RawMessageListParser(PathParser):
@@ -1121,6 +1212,7 @@ class FormatRegistry:
         DeepSeekParser(),
         QwenParser(),
         GeminiParser(),
+        GeminiActivityParser(),
         GenericParser(),
         RawMessageListParser(),
     ]
@@ -1261,14 +1353,17 @@ def render_message_html(msg: Message, idx: int, show_tooltip: bool) -> str:
 
 def chat_to_search_entry(chat: Chat, i: int) -> dict:
     full_text = chat.title + " " + chat.model
+    msgs = []
     for msg in chat.messages:
-        full_text += " " + msg.content
+        content = msg.content or ""
+        full_text += " " + content
+        msgs.append({"r": msg.role or "assistant", "t": content.lower()})
     return {"i": i, "title": chat.title, "model": chat.model,
             "text": full_text, "src": os.path.basename(chat.source_file),
-            "fmt": chat.source_format}
+            "fmt": chat.source_format, "msgs": msgs}
 
 
-def render_html(chats: List[Chat], source_root: str, show_tooltip: bool) -> str:
+def render_html(chats: List[Chat], source_root: str, show_tooltip: bool, output_filename: str = "chat_archive.html") -> tuple[str, str]:
     # ── sidebar
     sidebar_items = []
     for i, chat in enumerate(chats):
@@ -1304,11 +1399,9 @@ def render_html(chats: List[Chat], source_root: str, show_tooltip: bool) -> str:
             f'<div class="messages-container">{msgs_html}</div>'
             f'</section>')
 
-    # Safely encode JSON for embedding in <script> tag.
-    # CRITICAL: replace </script> with <\/script> so browser doesn't
-    # prematurely close the <script> block when chat content contains that string.
-    search_data = json.dumps([chat_to_search_entry(c, i) for i, c in enumerate(chats)],
-                             ensure_ascii=True).replace("</", r"<\/")
+    # Build search index data (for external JS file)
+    search_index = [chat_to_search_entry(c, i) for i, c in enumerate(chats)]
+    search_js = "window.SEARCH_INDEX = " + json.dumps(search_index, ensure_ascii=True) + ";"
     total_msgs = sum(len(c.messages) for c in chats)
     gen_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -1319,7 +1412,7 @@ def render_html(chats: List[Chat], source_root: str, show_tooltip: bool) -> str:
     # NOTE: Python f-string uses {{ }} for literal braces.
     # JS uses { } normally inside the template.
     # ─────────────────────────────────────────────────────────
-    return """<!DOCTYPE html>
+    html = """<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
@@ -1490,8 +1583,25 @@ body {
 }
 .tbtn:hover { border-color:var(--accent); color:var(--text); }
 .tbtn.active { background:var(--accent2); border-color:var(--accent); color:var(--accent-fg); }
+#btn-search { background:var(--accent2); border-color:var(--accent); color:var(--accent-fg); }
+#btn-search:hover { filter:brightness(1.1); }
+.tbtn.pending { box-shadow:0 0 0 2px var(--accent); }
 #search-stats { font-size:11px; color:var(--text3); white-space:nowrap; min-width:80px; }
 #nav-btns { display:none; gap:3px; }
+
+/* live-search toggle */
+.tbtn-check {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  cursor:pointer;
+  user-select:none;
+}
+.tbtn-check input {
+  margin:0;
+  accent-color:var(--accent);
+  cursor:pointer;
+}
 
 /* theme toggle */
 #theme-toggle { font-size:16px; cursor:pointer; background:none; border:none; color:var(--text2); }
@@ -1640,6 +1750,7 @@ SIDEBAR_ITEMS
 <div id="main">
   <div id="toolbar">
     <input id="search-input" type="text" placeholder="Search across all chats…">
+    <button class="tbtn" id="btn-search" onclick="runSearchNow()" title="Run search now">&#128269; Search</button>
     <div class="btn-group" id="mode-btns">
       <button class="tbtn active" id="btn-plain" onclick="setMode('plain')">Plain</button>
       <button class="tbtn" id="btn-regex" onclick="setMode('regex')">Regex</button>
@@ -1658,6 +1769,7 @@ SIDEBAR_ITEMS
     </div>
     <span id="search-stats"></span>
     <button class="tbtn" onclick="clearSearch()">&#10005;</button>
+    <label class="tbtn tbtn-check" title="Search as you type"><input type="checkbox" id="live-search" onchange="toggleLive()"> Live</label>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
   </div>
 
@@ -1668,18 +1780,21 @@ CHATS_HTML
   <div id="footer">Generated by ai_chat_archive.py &middot; GEN_TIME &middot; SOURCE_ROOT</div>
 </div>
 
+<script src="SEARCH_INDEX_FILE"></script>
 <script>
 (function() {
 'use strict';
 
 // ── Data ──
-var SEARCH_INDEX = SEARCH_DATA_JSON;
+// SEARCH_INDEX is set by search_index.js
 
 // ── State ──
 var mode = 'plain';
 var scope = 'all';
 var allMatches = [];
 var currentMatch = -1;
+var liveSearch = false;  // "Search as you type" toggle
+var lastSearched = '';   // query text of the last executed search
 
 // ── Theme ──
 function toggleTheme() {
@@ -1701,14 +1816,68 @@ function toggleTheme() {
   } catch(e) {}
 })();
 
+// ── Debounced, stale-safe search scheduling ──
+var SEARCH_DELAY = 200;
+var searchTimer = null;
+var searchToken = 0;
+
+function scheduleSearch() {
+  clearTimeout(searchTimer);
+  var token = ++searchToken;
+  searchTimer = setTimeout(function() { runSearch(token); }, SEARCH_DELAY);
+}
+
+function runSearch(token) {
+  if (token !== searchToken) return; // stale — a newer search is pending
+  doSearch(document.getElementById('search-input').value, false);
+}
+
+// ── Explicit search (Search button / Enter) ──
+function runSearchNow() {
+  clearTimeout(searchTimer);
+  var token = ++searchToken;
+  doSearch(document.getElementById('search-input').value, true);
+}
+
+// ── Live-search toggle ──
+function toggleLive() {
+  var el = document.getElementById('live-search');
+  liveSearch = !!(el && el.checked);
+  try { localStorage.setItem('cwLive', liveSearch ? '1' : '0'); } catch(e) {}
+  if (liveSearch) {
+    if (document.getElementById('search-input').value) scheduleSearch();
+  } else {
+    searchToken++; clearTimeout(searchTimer); // cancel any pending live search
+  }
+  updatePending();
+}
+// Restore saved live setting
+(function() {
+  try {
+    var v = localStorage.getItem('cwLive');
+    if (v !== null) {
+      liveSearch = v === '1';
+      var el = document.getElementById('live-search');
+      if (el) el.checked = liveSearch;
+    }
+  } catch(e) {}
+})();
+
+// ── "Search" button pending hint (typed != last executed) ──
+function updatePending() {
+  var btn = document.getElementById('btn-search');
+  if (!btn) return;
+  var typed = document.getElementById('search-input').value.trim();
+  btn.classList.toggle('pending', typed.length > 0 && typed !== lastSearched);
+}
+
 // ── Mode ──
 function setMode(m) {
   mode = m;
   ['plain','regex','fuzzy'].forEach(function(x) {
     document.getElementById('btn-' + x).classList.toggle('active', x === m);
   });
-  var q = document.getElementById('search-input').value;
-  if (q) doSearch(q);
+  scheduleSearch();
 }
 
 // ── Scope ──
@@ -1717,16 +1886,20 @@ function setScope(s) {
   ['all','user','ai','title'].forEach(function(x) {
     document.getElementById('scope-' + x).classList.toggle('active', x === s);
   });
-  var q = document.getElementById('search-input').value;
-  if (q) doSearch(q);
+  scheduleSearch();
 }
 
-// ── Sidebar filter ──
+// ── Sidebar filter (debounced) ──
+var SIDEBAR_DELAY = 150;
+var sidebarTimer = null;
 function filterSidebar(q) {
-  q = q.toLowerCase();
-  document.querySelectorAll('.sidebar-item').forEach(function(el) {
-    el.classList.toggle('hidden', q.length > 0 && el.textContent.toLowerCase().indexOf(q) === -1);
-  });
+  clearTimeout(sidebarTimer);
+  sidebarTimer = setTimeout(function() {
+    q = (q || '').toLowerCase();
+    document.querySelectorAll('.sidebar-item').forEach(function(el) {
+      el.classList.toggle('hidden', q.length > 0 && el.textContent.toLowerCase().indexOf(q) === -1);
+    });
+  }, SIDEBAR_DELAY);
 }
 
 // ── Jump to chat ──
@@ -1738,62 +1911,144 @@ function jumpToChat(idx) {
   if (sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-// ── Fuzzy score (bigram + window levenstein) ──
-function fuzzyScore(text, pattern) {
-  if (!pattern) return 0;
-  var t = text.toLowerCase(), p = pattern.toLowerCase();
+// ── Search limits (big-DB safety) ──
+var MAX_HL_MSGS = 400;    // max messages/titles visually marked per search
+var MAX_HL_MARKS = 1500;  // hard cap on total <mark> nodes rendered
+var FUZZY_WINDOW_MAX = 2000; // skip windowed Levenshtein on longer texts
+
+// ── Per-query working state (set at the start of doSearch) ──
+var currentQuery = '';
+var currentQL = '';
+var currentP = '';
+var currentREG = null;
+
+// ── Fast search index (built once from the embedded SEARCH_INDEX) ──
+var MESSAGES = []; // {c: chatIdx, m: msgIdx, r: role, t: lowercased content}
+var CHATS = [];    // {i: chatIdx, t: lowercased "title model", title: lowercased title}
+
+// Build search index synchronously (SEARCH_INDEX loaded via script tag)
+(function() {
+  if (!SEARCH_INDEX) return;
+  for (var k = 0; k < SEARCH_INDEX.length; k++) {
+    var e = SEARCH_INDEX[k];
+    CHATS.push({i: e.i,
+                t: (String(e.title || '') + ' ' + String(e.model || '')).toLowerCase(),
+                title: String(e.title || '').toLowerCase()});
+    var ms = e.msgs;
+    if (!ms || !ms.length) {
+      if (e.text) MESSAGES.push({c: k, m: 0, r: 'assistant', t: String(e.text).toLowerCase()});
+      continue;
+    }
+    for (var j = 0; j < ms.length; j++) {
+      var txt = String(ms[j].t || '');
+      if (txt) MESSAGES.push({c: k, m: j, r: ms[j].r || 'assistant', t: txt});
+    }
+  }
+})();
+
+// ── Fuzzy scoring (bigram + bounded windowed Levenshtein) ──
+// t must be pre-lowercased, p is lowercased.
+function fuzzyMatchScore(t, p) {
+  if (!p) return 0;
   if (t.indexOf(p) !== -1) return 1;
   if (p.length < 2) return 0;
-  var hits = 0, total = p.length - 1;
-  for (var i = 0; i < total; i++) {
-    if (t.indexOf(p[i] + p[i+1]) !== -1) hits++;
+  var hits = 0, n = p.length - 1;
+  for (var i = 0; i < n; i++) {
+    if (t.indexOf(p.charAt(i) + p.charAt(i + 1)) !== -1) hits++;
   }
-  var score = total > 0 ? hits / total : 0;
-  if (p.length <= 10) {
-    var best = p.length;
-    for (var j = 0; j <= t.length - p.length; j++) {
-      var w = t.slice(j, j + p.length), d = 0;
-      for (var k = 0; k < p.length; k++) if (w[k] !== p[k]) d++;
+  var score = hits / n;
+  // Windowed Levenshtein only helps borderline cases: skip it when the bigram
+  // score already crossed the threshold or nothing overlaps (result is fixed).
+  if (p.length <= 10 && t.length <= FUZZY_WINDOW_MAX && hits > 0 && score < 0.65) {
+    var best = p.length, end = t.length - p.length;
+    for (var j = 0; j <= end; j++) {
+      var d = 0;
+      for (var k = 0; k < p.length; k++) if (t[j + k] !== p[k]) d++;
       if (d < best) best = d;
+      if (best === 0) break;
     }
-    score = Math.max(score, Math.max(0, 1 - best / p.length));
+    var ws = 1 - best / p.length;
+    if (ws > score) score = ws;
   }
   return score;
 }
 
-// ── Find ranges in text ──
-function findRanges(text, query) {
-  var results = [];
-  if (!query || !text) return results;
+// Boolean "is this (pre-lowercased) text a fuzzy match?"
+function fuzzyDecide(text) {
+  if (!text || !currentP) return false;
+  return fuzzyMatchScore(text, currentP) >= 0.65;
+}
+
+// ── Count occurrences in one text (no range allocations) ──
+function countMatches(text) {
+  if (!text) return 0;
+  if (mode === 'plain' && !currentQL) return 0;
+  var n = 0;
   if (mode === 'plain') {
-    var tl = text.toLowerCase(), ql = query.toLowerCase(), pos = 0, idx;
-    while ((idx = tl.indexOf(ql, pos)) !== -1) {
-      results.push([idx, idx + ql.length]);
+    var pos = 0, idx;
+    while ((idx = text.indexOf(currentQL, pos)) !== -1) { n++; pos = idx + 1; }
+  } else if (mode === 'regex') {
+    if (!currentREG) return 0;
+    var m;
+    currentREG.lastIndex = 0;
+    while ((m = currentREG.exec(text)) !== null) {
+      n++;
+      if (m[0].length === 0) currentREG.lastIndex++;
+    }
+  } else {
+    return fuzzyDecide(text) ? 1 : 0;
+  }
+  return n;
+}
+
+// ── Find ranges in text (for DOM highlighting) ──
+function findRanges(text) {
+  var results = [];
+  if (!currentQuery || !text) return results;
+  var pos, idx, m;
+  if (mode === 'plain') {
+    var tl = text.toLowerCase();
+    pos = 0;
+    while ((idx = tl.indexOf(currentQL, pos)) !== -1) {
+      results.push([idx, idx + currentQL.length]);
       pos = idx + 1;
     }
   } else if (mode === 'regex') {
-    try {
-      var rx = new RegExp(query, 'gi'), m;
-      while ((m = rx.exec(text)) !== null) {
-        results.push([m.index, m.index + m[0].length]);
-        if (m[0].length === 0) rx.lastIndex++;
-      }
-    } catch(e) {}
-  } else {
-    var wlen = Math.max(query.length, 3), i = 0;
-    while (i <= text.length - wlen) {
-      if (fuzzyScore(text.slice(i, i + wlen), query) >= 0.65) {
-        results.push([i, i + wlen]);
-        i += wlen;
-      } else { i++; }
+    if (currentREG) {
+      try {
+        currentREG.lastIndex = 0;
+        while ((m = currentREG.exec(text)) !== null) {
+          results.push([m.index, m.index + m[0].length]);
+          if (m[0].length === 0) currentREG.lastIndex++;
+        }
+      } catch (e) {}
     }
+  } else {
+    results = fuzzyRanges(text);
   }
   return results;
 }
 
-// ── Highlight text nodes ──
-function highlightEl(el, ranges) {
-  if (!ranges || !ranges.length) return;
+function fuzzyRanges(text) {
+  var results = [];
+  var t = text.toLowerCase(), p = currentP;
+  if (t.length > FUZZY_WINDOW_MAX) {
+    if (fuzzyMatchScore(t, p) >= 0.65) results.push([0, Math.min(p.length, t.length)]);
+    return results;
+  }
+  var wlen = Math.max(p.length, 3), i = 0;
+  while (i <= t.length - wlen) {
+    if (fuzzyMatchScore(t.slice(i, i + wlen), p) >= 0.65) {
+      results.push([i, i + wlen]);
+      i += wlen;
+    } else { i++; }
+  }
+  return results;
+}
+
+// ── Highlight text nodes; returns the number of marks created ──
+function highlightEl(el, ranges, maxMarks) {
+  if (!ranges || !ranges.length) return 0;
   var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   var nodes = [], node;
   while ((node = walker.nextNode())) nodes.push(node);
@@ -1803,10 +2058,15 @@ function highlightEl(el, ranges) {
     return {node:n, start:s, end:offset};
   });
   var sorted = ranges.slice().sort(function(a,b) { return b[0]-a[0]; });
-  sorted.forEach(function(range) {
+  var created = 0;
+  for (var ri = 0; ri < sorted.length; ri++) {
+    if (created >= maxMarks) break;
+    var range = sorted[ri];
     var rs = range[0], re = range[1];
-    nodeMap.forEach(function(no) {
-      if (re <= no.start || rs >= no.end) return;
+    for (var ni = 0; ni < nodeMap.length; ni++) {
+      if (created >= maxMarks) break;
+      var no = nodeMap[ni];
+      if (re <= no.start || rs >= no.end) continue;
       var ls = Math.max(rs, no.start) - no.start;
       var le = Math.min(re, no.end) - no.start;
       var t = no.node.textContent;
@@ -1816,20 +2076,49 @@ function highlightEl(el, ranges) {
       var after = no.node.splitText(ls);
       after.textContent = t.slice(le);
       no.node.parentNode.insertBefore(mark, after);
-    });
-  });
+      allMatches.push(mark);
+      created++;
+    }
+  }
+  return created;
 }
 
-// ── Clear highlights ──
+// ── Elements touched by the current search (for cheap cleanup) ──
+var touchedSections = [];
+var touchedMsgs = [];
+var hlContents = [];
+var hlDone = 0, markTotal = 0;
+
+function hlMessage(msgEl) {
+  if (hlDone >= MAX_HL_MSGS || markTotal >= MAX_HL_MARKS) return;
+  var contentEl = msgEl.querySelector('.search-content');
+  if (!contentEl) return;
+  var ranges = findRanges(contentEl.textContent);
+  if (!ranges.length) return;
+  hlContents.push(contentEl);
+  markTotal += highlightEl(contentEl, ranges, MAX_HL_MARKS - markTotal);
+  hlDone++;
+}
+
+// ── Clear highlights (only elements the previous search touched) ──
 function clearHighlights() {
-  document.querySelectorAll('mark.hl').forEach(function(m) {
-    m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
-  });
-  document.querySelectorAll('.search-content').forEach(function(el) { el.normalize(); });
-  document.querySelectorAll('.message').forEach(function(m) {
-    m.classList.remove('has-match','match-hidden');
-  });
-  document.querySelectorAll('.chat-section').forEach(function(s) { s.classList.remove('hidden'); });
+  var i, el;
+  for (i = 0; i < hlContents.length; i++) {
+    el = hlContents[i];
+    el.querySelectorAll('mark.hl').forEach(function(m) {
+      m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+    });
+    el.normalize();
+  }
+  hlContents = [];
+  for (i = 0; i < touchedMsgs.length; i++) {
+    touchedMsgs[i].classList.remove('has-match','match-hidden');
+  }
+  touchedMsgs = [];
+  for (i = 0; i < touchedSections.length; i++) {
+    touchedSections[i].classList.remove('hidden');
+  }
+  touchedSections = [];
   document.getElementById('no-results').classList.remove('visible');
   document.getElementById('nav-btns').style.display = 'none';
   document.getElementById('search-stats').textContent = '';
@@ -1837,84 +2126,137 @@ function clearHighlights() {
 }
 
 // ── Main search ──
-function doSearch(query) {
+function doSearch(query, explicit) {
   clearHighlights();
-  if (!query || !query.trim()) return;
-  var totalHits = 0, visibleChats = 0;
+  hlDone = 0; markTotal = 0;
+  if (!query || !query.trim()) { lastSearched = ''; updatePending(); return; }
+  var q = query.trim();
+  currentQuery = q;
+  currentQL = q.toLowerCase();
+  currentP = q.toLowerCase();
+  currentREG = null;
+  if (mode === 'regex') {
+    try { currentREG = new RegExp(q, 'gi'); } catch (e) { currentREG = null; }
+  }
 
-  document.querySelectorAll('.chat-section').forEach(function(section) {
-    var chatHits = 0;
+  var totalHits = 0, visibleChats = 0, scopeRole = null;
+  if (scope === 'user') scopeRole = 'user';
+  else if (scope === 'ai') scopeRole = 'assistant';
 
-    // Title scope
-    if (scope === 'title') {
-      var titleEl = section.querySelector('.chat-title');
-      if (titleEl) {
-        var tRanges = findRanges(titleEl.textContent, query);
-        if (tRanges.length) { highlightEl(titleEl, tRanges); chatHits += tRanges.length; totalHits += tRanges.length; titleEl.querySelectorAll('mark.hl').forEach(function(m) { allMatches.push(m); }); }
+  var msgMatch = {}, dimByRole = {}, chatHits = {};
+  var i, n, rec, c;
+
+  if (scope === 'title') {
+    for (i = 0; i < CHATS.length; i++) {
+      c = countMatches(CHATS[i].title);
+      if (c > 0) { totalHits += c; chatHits[CHATS[i].i] = c; }
+    }
+  } else {
+    for (n = 0; n < MESSAGES.length; n++) {
+      rec = MESSAGES[n];
+      if (scopeRole && rec.r !== scopeRole) {
+        if (!dimByRole[rec.c]) dimByRole[rec.c] = {};
+        dimByRole[rec.c][rec.m] = true;
+        continue;
       }
-      section.classList.toggle('hidden', chatHits === 0);
-      if (chatHits > 0) visibleChats++;
-      return;
+      c = countMatches(rec.t);
+      if (c > 0) {
+        totalHits += c;
+        chatHits[rec.c] = (chatHits[rec.c] || 0) + c;
+        if (!msgMatch[rec.c]) msgMatch[rec.c] = {};
+        msgMatch[rec.c][rec.m] = true;
+      }
+    }
+  }
+
+  var sections = document.querySelectorAll('.chat-section');
+  for (i = 0; i < sections.length; i++) {
+    var sec = sections[i];
+    var idx = sec.getAttribute('data-idx');
+    touchedSections.push(sec);
+    if (!chatHits[idx]) { sec.classList.add('hidden'); continue; }
+    sec.classList.remove('hidden');
+    visibleChats++;
+
+    if (scope === 'title') {
+      if (hlDone < MAX_HL_MSGS && markTotal < MAX_HL_MARKS) {
+        var titleEl = sec.querySelector('.chat-title');
+        if (titleEl) {
+          var tRanges = findRanges(titleEl.textContent);
+          if (tRanges.length) {
+            hlContents.push(titleEl);
+            markTotal += highlightEl(titleEl, tRanges, MAX_HL_MARKS - markTotal);
+            hlDone++;
+          }
+        }
+      }
+      continue;
     }
 
-    section.querySelectorAll('.message').forEach(function(msgEl) {
-      var role = msgEl.getAttribute('data-role');
-      if (scope === 'user' && role !== 'user') { msgEl.classList.add('match-hidden'); return; }
-      if (scope === 'ai'   && role !== 'assistant') { msgEl.classList.add('match-hidden'); return; }
-      var contentEl = msgEl.querySelector('.search-content');
-      if (!contentEl) return;
-      var ranges = findRanges(contentEl.textContent, query);
-      if (ranges.length) {
-        highlightEl(contentEl, ranges);
-        msgEl.classList.add('has-match');
-        chatHits += ranges.length; totalHits += ranges.length;
-        contentEl.querySelectorAll('mark.hl').forEach(function(m) { allMatches.push(m); });
+    var msgs = sec.querySelectorAll('.message');
+    for (n = 0; n < msgs.length; n++) {
+      var mEl = msgs[n];
+      var midx = mEl.getAttribute('data-idx');
+      var isMatch = !!(msgMatch[idx] && msgMatch[idx][midx]);
+      touchedMsgs.push(mEl);
+      if (isMatch) {
+        mEl.classList.add('has-match');
+        mEl.classList.remove('match-hidden');
+        hlMessage(mEl);
       } else {
-        msgEl.classList.add('match-hidden');
+        mEl.classList.add('match-hidden');
       }
-    });
-
-    section.classList.toggle('hidden', chatHits === 0);
-    if (chatHits > 0) visibleChats++;
-  });
+    }
+  }
 
   // Sync sidebar
-  document.querySelectorAll('.sidebar-item').forEach(function(si) {
-    var sec = document.getElementById('chat-' + si.dataset.idx);
-    si.classList.toggle('hidden', !!(sec && sec.classList.contains('hidden')));
-  });
+  var items = document.querySelectorAll('.sidebar-item');
+  for (i = 0; i < items.length; i++) {
+    var si = items[i];
+    var secEl = document.getElementById('chat-' + si.dataset.idx);
+    si.classList.toggle('hidden', !!(secEl && secEl.classList.contains('hidden')));
+  }
 
   if (visibleChats === 0) document.getElementById('no-results').classList.add('visible');
+
+  lastSearched = q;
+  updatePending();
 
   if (totalHits > 0) {
     document.getElementById('nav-btns').style.display = 'flex';
     document.getElementById('search-stats').textContent = totalHits + ' match' + (totalHits !== 1 ? 'es' : '') + ' in ' + visibleChats + ' chat' + (visibleChats !== 1 ? 's' : '');
-    navMatch(1);
+    if (explicit) navMatch(1, false); // auto-scroll only on explicit searches
   } else {
     document.getElementById('search-stats').textContent = 'No matches';
   }
 }
 
 // ── Navigate matches ──
-function navMatch(dir) {
+function navMatch(dir, smooth) {
   if (!allMatches.length) return;
   if (currentMatch >= 0 && currentMatch < allMatches.length)
     allMatches[currentMatch].classList.remove('current');
   currentMatch = (currentMatch + dir + allMatches.length) % allMatches.length;
   allMatches[currentMatch].classList.add('current');
-  allMatches[currentMatch].scrollIntoView({behavior:'smooth', block:'center'});
+  allMatches[currentMatch].scrollIntoView({behavior: smooth ? 'smooth' : 'auto', block:'center'});
   document.getElementById('search-stats').textContent = (currentMatch+1) + ' / ' + allMatches.length + ' matches';
 }
 
 function clearSearch() {
   document.getElementById('search-input').value = '';
+  lastSearched = '';
+  searchToken++; clearTimeout(searchTimer);
   clearHighlights();
+  updatePending();
 }
 
 // ── Wire up input ──
-document.getElementById('search-input').addEventListener('input', function() { doSearch(this.value); });
+document.getElementById('search-input').addEventListener('input', function() {
+  updatePending();
+  if (liveSearch) scheduleSearch();
+});
 document.getElementById('search-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') { navMatch(e.shiftKey ? -1 : 1); e.preventDefault(); }
+  if (e.key === 'Enter') { runSearchNow(); e.preventDefault(); }
   if (e.key === 'Escape') clearSearch();
 });
 
@@ -1939,6 +2281,8 @@ window.jumpToChat = jumpToChat;
 window.navMatch = navMatch;
 window.clearSearch = clearSearch;
 window.toggleTheme = toggleTheme;
+window.runSearchNow = runSearchNow;
+window.toggleLive = toggleLive;
 
 })();
 </script>
@@ -1948,7 +2292,7 @@ window.toggleTheme = toggleTheme;
     ).replace(
         "CHATS_HTML", chats_html
     ).replace(
-        "SEARCH_DATA_JSON", search_data
+        "SEARCH_INDEX_FILE", os.path.basename(output_filename).replace(".html", "_search_index.js")
     ).replace(
         "TOTAL_CHATS", str(len(chats))
     ).replace(
@@ -1958,6 +2302,9 @@ window.toggleTheme = toggleTheme;
     ).replace(
         "SOURCE_ROOT", esc(source_root)
     )
+
+    # Return both HTML and search index JS string
+    return html, search_js
 
 
 # ══════════════════════════════════════════════════════════
@@ -2042,12 +2389,30 @@ Examples:
     print(f"\n✅ {len(all_chats)} chat(s), {total_msgs} message(s) total")
     print("⚙  Generating HTML…")
 
-    html_out = render_html(all_chats, root, show_tooltip=tooltips)
+    html_out, search_js = render_html(all_chats, root, show_tooltip=tooltips, output_filename=os.path.basename(output))
+    
+    # Write HTML file
     with open(output, "w", encoding="utf-8") as f:
         f.write(html_out)
+        f.flush()
+        os.fsync(f.fileno())
+
+    # Write search_index.js file
+    search_index_path = os.path.splitext(output)[0] + "_search_index.js"
+    with open(search_index_path, "w", encoding="utf-8") as f:
+        f.write(search_js)
+        f.flush()
+        os.fsync(f.fileno())
 
     size_kb = os.path.getsize(output) // 1024
+    # sanity check: file ends with </html> (not truncated mid-script)
+    with open(output, "rb") as f:
+        f.seek(max(0, os.path.getsize(output) - 256))
+        tail = f.read().decode("utf-8", errors="ignore")
+        if "</html>" not in tail:
+            print(f"⚠ WARNING: output may be truncated (no </html> in last 256 bytes)", file=sys.stderr)
     print(f"💾 Saved: {output}  ({size_kb} KB)")
+    print(f"💾 Saved: {search_index_path}")
     print("   Open in any browser — no server needed.")
 
 
