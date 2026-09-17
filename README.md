@@ -12,14 +12,14 @@ No server, no database, no account, no internet connection required. Just a scri
 - 🔍 Auto-detects which AI service each file came from, even when field names differ wildly between exports
 - 🧩 Normalizes everything into one consistent shape: chat title, model, messages, roles, timestamps, attachments
 - 🛠️ Auto-repairs mildly broken JSON (trailing commas, stray characters) so messy exports don't get silently dropped
-- 🌐 Generates **one self-contained `.html` file** with every chat, a sidebar, and built-in search — works by just double-clicking it, no Python needed afterward
+- 🌐 Generates **two files**: a self-contained `.html` file with every chat, a sidebar, and built-in search, plus a `_search_index.js` file that holds the search index — works by just double-clicking the HTML, no Python needed afterward. Both files work with `file://` (no local server required).
 ![main page](example\1.png)
 
 ## 🔒 Privacy
 
 - **100% local.** Nothing is uploaded anywhere. The script never makes a network request.
 - **Fully open source.** Every line is in the one `.py` file — read it, audit it, fork it.
-- The output `.html` is also fully self-contained (no CDN scripts, no external fonts, no tracking) — open it on a USB stick, an air-gapped machine, ten years from now, it'll still work.
+- The output `.html` + `_search_index.js` are fully self-contained (no CDN scripts, no external fonts, no tracking, no internet required) — copy both files to a USB stick or air-gapped machine, they'll still work years from now.
 
 ## 🤖 Currently supported chat exports
 
@@ -28,6 +28,7 @@ No server, no database, no account, no internet connection required. Just a scri
 | ChatGPT | both single-conversation and multi-conversation export formats |
 | Claude | Anthropic's standard conversation export |
 | Gemini / Bard | `role` + `parts` message format |
+| Gemini Apps / AI Mode | Google Takeout "My Activity" records: each `title` + `safeHtmlItem` activity becomes a user/assistant chat |
 | DeepSeek | including reasoning/`<think>` blocks, shown collapsed |
 | Qwen | including reasoning summaries |
 | Grok | xAI's export format |
@@ -43,13 +44,13 @@ If your export doesn't match any known format, the script will still try a best-
 python ai_chat_archive.py
 ```
 
-That's it — by default it scans the current folder and writes `chat_archive.html` next to the script. Open that file in any browser.
+That's it — by default it scans the current folder and writes `chat_archive.html` + `chat_archive_search_index.js` next to the script. Open the `.html` file in any browser (keep both files together).
 
 ```bash
 # scan a specific folder
 python ai_chat_archive.py ./my_chat_exports
 
-# custom output filename
+# custom output filename (generates my_archive.html + my_archive_search_index.js)
 python ai_chat_archive.py -o my_archive.html
 
 # see what got detected for each file
@@ -90,9 +91,12 @@ DEFAULT_ON_UNKNOWN: str = "try"              # "try" | "ignore"
 
 The output archive has a sidebar (all chats, filterable by title) and a toolbar above the messages with:
 
+- **Search on demand** — typing never blocks: run the search with the **🔍 Search** button or <kbd>Enter</kbd>. The button shows a highlight while the typed query differs from the last executed search.
 - **Search modes** — `Plain` (substring), `Regex` (full JS regex), `Fuzzy` (typo-tolerant matching)
 - **Search scope** — `All` messages, `User` only, `AI` only, or `Titles` only
-- Match navigation (▲ ▼ or <kbd>Enter</kbd> / <kbd>Shift+Enter</kbd>), live highlight count, jump-to-chat sidebar sync
+- **"Live" checkbox** — optional search-as-you-type (debounced), off by default; the setting is remembered across reloads
+- **Match navigation** — ▲ ▼ toolbar buttons jump through results (auto-scroll happens only on explicit searches); live highlight count, jump-to-chat sidebar sync
+- Optimized for large archives: search runs against an external `*_search_index.js` file (loaded via `<script src>`, works with `file://`), with a cap on highlighted matches so very common queries stay responsive
 - 🌙 / ☀️ theme toggle (light by default), remembered across reloads
 
 All of this runs in plain JavaScript embedded in the HTML — no frameworks, no build step, no internet required to use the search.
@@ -137,5 +141,5 @@ The full guide with more detail lives as a comment block directly above the pars
 ## ⚠️ Known limitations
 
 - Branching conversations (where you edited a message and got multiple AI responses) are flattened to the most recent branch — older branches aren't shown.
-- Very large archives (thousands of chats) will produce a correspondingly large HTML file; the in-browser search is fast but the initial page load scales with total content size.
+- Very large archives (thousands of chats) will produce a correspondingly large HTML file; search stays responsive (it runs against an embedded string index and debounces live input) but the initial page load scales with total content size.
 - Image *attachments* are listed by filename but not rendered inline (most exports don't embed the actual image bytes, only a reference/filename).
