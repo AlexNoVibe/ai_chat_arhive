@@ -1829,6 +1829,10 @@ SIDEBAR_ITEMS
   <div id="content">
     <details id="model-filter">
       <summary>⚙️ Filter by Model</summary>
+      <div id="model-filter-actions" style="margin-top: 10px; display: flex; gap: 6px;">
+        <button class="tbtn" onclick="toggleAllModels(true)">Check All</button>
+        <button class="tbtn" onclick="toggleAllModels(false)">Uncheck All</button>
+      </div>
       <div id="model-checkboxes"></div>
     </details>
 CHATS_HTML
@@ -2471,6 +2475,17 @@ window.clearSearch = clearSearch;
 window.toggleTheme = toggleTheme;
 window.runSearchNow = runSearchNow;
 window.toggleLive = toggleLive;
+window.toggleAllModels = function(state) {
+  var container = document.getElementById('model-checkboxes');
+  if (!container) return;
+  container.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+    cb.checked = state;
+  });
+  Object.keys(activeModels).forEach(function(k) {
+    activeModels[k] = state;
+  });
+  updateModelVisibility();
+};
 
 })();
 </script>
