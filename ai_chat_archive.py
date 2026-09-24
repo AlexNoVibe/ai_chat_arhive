@@ -1278,7 +1278,7 @@ def fmt_time(ts: Optional[float]) -> str:
 def esc(s) -> str:
     return html_mod.escape(str(s) if s is not None else "")
 
-def render_message_html(msg: Message, idx: int, show_tooltip: bool) -> str:
+def render_message_html(msg: Message, idx: int, show_tooltip: bool, fallback_model: str = "") -> str:
     role_class = {"user":"msg-user","assistant":"msg-assistant",
                   "system":"msg-system","tool":"msg-tool"}.get(msg.role,"msg-assistant")
     role_label = {"user":"User","assistant":"Assistant",
@@ -1288,6 +1288,8 @@ def render_message_html(msg: Message, idx: int, show_tooltip: bool) -> str:
                  if msg.timestamp else "")
     model_html = (f'<span class="msg-model-tag">{esc(msg.model)}</span>'
                   if msg.model else "")
+    
+    eff_model = msg.model or fallback_model
 
     # Render content: handle <think> blocks, code blocks, newlines
     raw = msg.content
@@ -1341,7 +1343,7 @@ def render_message_html(msg: Message, idx: int, show_tooltip: bool) -> str:
     tooltip_class = " has-tooltip" if show_tooltip and msg.raw_fields else ""
 
     return (f'<div class="message {role_class}{tooltip_class}" '
-            f'data-idx="{idx}" data-role="{msg.role}" data-model="{esc(msg.model)}">'
+            f'data-idx="{idx}" data-role="{msg.role}" data-model="{esc(eff_model)}">'
             f'<div class="msg-header">'
             f'<span class="msg-role">{role_label}</span>'
             f'{model_html}{time_html}'
@@ -1357,7 +1359,8 @@ def chat_to_search_entry(chat: Chat, i: int) -> dict:
     for msg in chat.messages:
         content = msg.content or ""
         full_text += " " + content
-        msgs.append({"r": msg.role or "assistant", "t": content.lower(), "m": msg.model})
+        eff_model = msg.model or chat.model
+        msgs.append({"r": msg.role or "assistant", "t": content.lower(), "m": eff_model})
     return {"i": i, "title": chat.title, "model": chat.model,
             "text": full_text, "src": os.path.basename(chat.source_file),
             "fmt": chat.source_format, "msgs": msgs}
@@ -1381,7 +1384,7 @@ def render_html(chats: List[Chat], source_root: str, show_tooltip: bool, output_
     for i, chat in enumerate(chats):
         ts = fmt_time(chat.created_at) if chat.created_at else ""
         src = os.path.basename(chat.source_file)
-        msgs_html = "\n".join(render_message_html(m, j, show_tooltip)
+        msgs_html = "\n".join(render_message_html(m, j, show_tooltip, fallback_model=chat.model)
                                for j, m in enumerate(chat.messages))
         chat_sections.append(
             f'<section class="chat-section" id="chat-{i}" data-idx="{i}">'
@@ -1737,29 +1740,40 @@ mark.hl.current { background:var(--hl-cur-bg); color:var(--text); }
 }
 #model-checkboxes {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
-#model-checkboxes label {
-  display: flex;
+.filter-item {
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 13px;
   cursor: pointer;
-  background: var(--bg3);
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
+  user-select: none;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
-#model-checkboxes label:hover {
-  border-color: var(--accent);
+.filter-item:hover {
+  background: var(--bg3);
+}
+.filter-group {
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+  margin-top: 2px;
+  margin-bottom: 4px;
 }
 
 /* ── Empty state & hidden models ── */
 .message.model-hidden { display:none !important; }
+.chat-section.model-hidden-chat { display:none !important; }
+.sidebar-item.model-hidden-chat { display:none !important; }
 #no-results { display:none; text-align:center; padding:60px 20px; color:var(--text3); }
 #no-results.visible { display:block; }
 
@@ -1995,22 +2009,93 @@ var CHATS = [];    // {i: chatIdx, t: lowercased "title model", title: lowercase
   
   var mKeys = Object.keys(uniqueModels).sort();
   var container = document.getElementById('model-checkboxes');
+
+  function getModelPath(m) {
+    var low = m.toLowerCase();
+    if (low.startsWith('gpt')) {
+      if (low.startsWith('gpt-4')) return ['GPT', 'GPT-4', m];
+      if (low.startsWith('gpt-5')) return ['GPT', 'GPT-5', m];
+      return ['GPT', 'Other GPT', m];
+    }
+    if (low.startsWith('grok')) {
+      if (low.startsWith('grok-3')) return ['Grok', 'Grok-3', m];
+      if (low.startsWith('grok-4')) return ['Grok', 'Grok-4', m];
+      return ['Grok', m];
+    }
+    if (low.startsWith('qwen')) return ['Qwen', m];
+    if (low.startsWith('deepseek')) return ['DeepSeek', m];
+    if (low.match(/^o\d/)) return ['O-Series (o3/o4)', m];
+    if (low.includes('davinci')) return ['Legacy (Davinci)', m];
+    if (low.includes('gemini') || low === 'режим ии') return ['Gemini', m];
+    return ['Other', m];
+  }
+
   if (mKeys.length > 0 && container) {
+    var tree = { _nodes: {} };
     mKeys.forEach(function(m) {
       activeModels[m] = true;
-      var lbl = document.createElement('label');
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = true;
-      cb.value = m;
-      cb.onchange = function() {
-        activeModels[this.value] = this.checked;
-        updateModelVisibility();
-      };
-      lbl.appendChild(cb);
-      lbl.appendChild(document.createTextNode(m));
-      container.appendChild(lbl);
+      var path = getModelPath(m);
+      var curr = tree;
+      for (var i = 0; i < path.length; i++) {
+        var p = path[i];
+        if (!curr._nodes[p]) curr._nodes[p] = { _nodes: {}, _isLeaf: false, name: p };
+        curr = curr._nodes[p];
+      }
+      curr._isLeaf = true;
+      curr.modelName = m;
     });
+
+    function renderTree(nodesObj, parentEl) {
+      var keys = Object.keys(nodesObj).sort();
+      keys.forEach(function(k) {
+        var node = nodesObj[k];
+        var itemDiv = document.createElement('div');
+        var lbl = document.createElement('label');
+        lbl.className = 'filter-item';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        
+        if (node._isLeaf) {
+          cb.value = node.modelName;
+          cb.className = 'cb-model';
+          cb.onchange = function() {
+            activeModels[this.value] = this.checked;
+            updateModelVisibility();
+          };
+          lbl.appendChild(cb);
+          lbl.appendChild(document.createTextNode(node.modelName));
+          itemDiv.appendChild(lbl);
+        } else {
+          cb.className = 'cb-group';
+          cb.onchange = function() {
+            var checked = this.checked;
+            var groupDiv = this.parentNode.nextElementSibling;
+            if (groupDiv) {
+              groupDiv.querySelectorAll('.cb-model').forEach(function(childCb) {
+                childCb.checked = checked;
+                activeModels[childCb.value] = checked;
+              });
+              groupDiv.querySelectorAll('.cb-group').forEach(function(gCb) {
+                gCb.checked = checked;
+              });
+            }
+            updateModelVisibility();
+          };
+          lbl.appendChild(cb);
+          lbl.appendChild(document.createTextNode(node.name));
+          itemDiv.appendChild(lbl);
+          
+          var groupDiv = document.createElement('div');
+          groupDiv.className = 'filter-group';
+          renderTree(node._nodes, groupDiv);
+          itemDiv.appendChild(groupDiv);
+        }
+        parentEl.appendChild(itemDiv);
+      });
+    }
+
+    renderTree(tree._nodes, container);
   } else {
     var filterEl = document.getElementById('model-filter');
     if (filterEl) filterEl.style.display = 'none';
@@ -2023,8 +2108,26 @@ function updateModelVisibility() {
     var isVisible = !m || activeModels[m];
     el.classList.toggle('model-hidden', !isVisible);
   });
+  
+  document.querySelectorAll('.chat-section').forEach(function(sec) {
+     var msgs = sec.querySelectorAll('.message');
+     var anyVisible = false;
+     for (var i = 0; i < msgs.length; i++) {
+        if (!msgs[i].classList.contains('model-hidden')) { anyVisible = true; break; }
+     }
+     sec.classList.toggle('model-hidden-chat', !anyVisible);
+  });
+  
   if (document.getElementById('search-input').value.trim()) {
     scheduleSearch();
+  } else {
+    var items = document.querySelectorAll('.sidebar-item');
+    for (var i = 0; i < items.length; i++) {
+      var si = items[i];
+      var secEl = document.getElementById('chat-' + si.dataset.idx);
+      var isHiddenByModel = secEl && secEl.classList.contains('model-hidden-chat');
+      si.classList.toggle('model-hidden-chat', !!isHiddenByModel);
+    }
   }
 }
 
