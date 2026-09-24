@@ -1341,7 +1341,7 @@ def render_message_html(msg: Message, idx: int, show_tooltip: bool) -> str:
     tooltip_class = " has-tooltip" if show_tooltip and msg.raw_fields else ""
 
     return (f'<div class="message {role_class}{tooltip_class}" '
-            f'data-idx="{idx}" data-role="{msg.role}">'
+            f'data-idx="{idx}" data-role="{msg.role}" data-model="{esc(msg.model)}">'
             f'<div class="msg-header">'
             f'<span class="msg-role">{role_label}</span>'
             f'{model_html}{time_html}'
@@ -1357,7 +1357,7 @@ def chat_to_search_entry(chat: Chat, i: int) -> dict:
     for msg in chat.messages:
         content = msg.content or ""
         full_text += " " + content
-        msgs.append({"r": msg.role or "assistant", "t": content.lower()})
+        msgs.append({"r": msg.role or "assistant", "t": content.lower(), "m": msg.model})
     return {"i": i, "title": chat.title, "model": chat.model,
             "text": full_text, "src": os.path.basename(chat.source_file),
             "fmt": chat.source_format, "msgs": msgs}
@@ -1720,7 +1720,46 @@ mark.hl.current { background:var(--hl-cur-bg); color:var(--text); }
 .message.has-match { box-shadow:0 0 0 1px var(--accent); }
 .message.match-hidden { opacity:.2; pointer-events:none; }
 
-/* ── Empty state ── */
+/* ── Model Filter ── */
+#model-filter {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+#model-filter summary {
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  color: var(--accent);
+}
+#model-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+#model-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--bg3);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+#model-checkboxes label:hover {
+  border-color: var(--accent);
+}
+
+/* ── Empty state & hidden models ── */
+.message.model-hidden { display:none !important; }
 #no-results { display:none; text-align:center; padding:60px 20px; color:var(--text3); }
 #no-results.visible { display:block; }
 
@@ -1774,6 +1813,10 @@ SIDEBAR_ITEMS
   </div>
 
   <div id="content">
+    <details id="model-filter">
+      <summary>⚙️ Filter by Model</summary>
+      <div id="model-checkboxes"></div>
+    </details>
 CHATS_HTML
     <div id="no-results">No chats match your search.</div>
   </div>
@@ -1795,6 +1838,7 @@ var allMatches = [];
 var currentMatch = -1;
 var liveSearch = false;  // "Search as you type" toggle
 var lastSearched = '';   // query text of the last executed search
+var activeModels = {};
 
 // ── Theme ──
 function toggleTheme() {
@@ -1929,22 +1973,60 @@ var CHATS = [];    // {i: chatIdx, t: lowercased "title model", title: lowercase
 // Build search index synchronously (SEARCH_INDEX loaded via script tag)
 (function() {
   if (!SEARCH_INDEX) return;
+  var uniqueModels = {};
   for (var k = 0; k < SEARCH_INDEX.length; k++) {
     var e = SEARCH_INDEX[k];
+    if (e.model) uniqueModels[e.model] = true;
     CHATS.push({i: e.i,
                 t: (String(e.title || '') + ' ' + String(e.model || '')).toLowerCase(),
                 title: String(e.title || '').toLowerCase()});
     var ms = e.msgs;
     if (!ms || !ms.length) {
-      if (e.text) MESSAGES.push({c: k, m: 0, r: 'assistant', t: String(e.text).toLowerCase()});
+      if (e.text) MESSAGES.push({c: k, m: 0, r: 'assistant', t: String(e.text).toLowerCase(), mod: String(e.model || '')});
       continue;
     }
     for (var j = 0; j < ms.length; j++) {
       var txt = String(ms[j].t || '');
-      if (txt) MESSAGES.push({c: k, m: j, r: ms[j].r || 'assistant', t: txt});
+      var mModel = String(ms[j].m || e.model || '');
+      if (mModel) uniqueModels[mModel] = true;
+      if (txt) MESSAGES.push({c: k, m: j, r: ms[j].r || 'assistant', t: txt, mod: mModel});
     }
   }
+  
+  var mKeys = Object.keys(uniqueModels).sort();
+  var container = document.getElementById('model-checkboxes');
+  if (mKeys.length > 0 && container) {
+    mKeys.forEach(function(m) {
+      activeModels[m] = true;
+      var lbl = document.createElement('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.value = m;
+      cb.onchange = function() {
+        activeModels[this.value] = this.checked;
+        updateModelVisibility();
+      };
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(m));
+      container.appendChild(lbl);
+    });
+  } else {
+    var filterEl = document.getElementById('model-filter');
+    if (filterEl) filterEl.style.display = 'none';
+  }
 })();
+
+function updateModelVisibility() {
+  document.querySelectorAll('.message').forEach(function(el) {
+    var m = el.getAttribute('data-model');
+    var isVisible = !m || activeModels[m];
+    el.classList.toggle('model-hidden', !isVisible);
+  });
+  if (document.getElementById('search-input').value.trim()) {
+    scheduleSearch();
+  }
+}
 
 // ── Fuzzy scoring (bigram + bounded windowed Levenshtein) ──
 // t must be pre-lowercased, p is lowercased.
@@ -2154,6 +2236,9 @@ function doSearch(query, explicit) {
   } else {
     for (n = 0; n < MESSAGES.length; n++) {
       rec = MESSAGES[n];
+      if (rec.mod && !activeModels[rec.mod]) {
+        continue;
+      }
       if (scopeRole && rec.r !== scopeRole) {
         if (!dimByRole[rec.c]) dimByRole[rec.c] = {};
         dimByRole[rec.c][rec.m] = true;
