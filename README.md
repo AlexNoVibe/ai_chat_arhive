@@ -1,6 +1,6 @@
-# ai_chat_archive 🧵
+# AI Chat Archive 🗃️
 
-A single Python script that collects exported chat JSON files from various AI chat services and weaves them into one searchable, offline HTML archive.
+A powerful, zero-dependency Python script that collects exported chat JSON files from various AI chat services and weaves them into one searchable, filterable, offline HTML archive.
 
 No server, no database, no account, no internet connection required. Just a script and a browser.
 
@@ -8,10 +8,11 @@ No server, no database, no account, no internet connection required. Just a scri
 
 ## ✨ What it does
 
-- 📂 Recursively scans a folder (and all subfolders) for `.json` files
-- 🔍 Auto-detects which AI service each file came from, even when field names differ wildly between exports
-- 🧩 Normalizes everything into one consistent shape: chat title, model, messages, roles, timestamps, attachments
-- 🛠️ Auto-repairs mildly broken JSON (trailing commas, stray characters) so messy exports don't get silently dropped
+- 📂 **Recursively scans** a folder (and all subfolders) for `.json` files
+- 🔍 **Auto-detects** which AI service each file came from, even when field names differ wildly between exports
+- 🧩 **Normalizes everything** into one consistent shape: chat title, model, messages, roles, timestamps, attachments
+- 🎛️ **Advanced Model Filtering**: A hierarchical model filter allows you to easily toggle specific AI models (like GPT-4, Claude, DeepSeek) to hide or show their messages along with the corresponding user requests.
+- 🛠️ **Auto-repairs** mildly broken JSON (trailing commas, stray characters) so messy exports don't get silently dropped
 - 🌐 Generates **two files**: a self-contained `.html` file with every chat, a sidebar, and built-in search, plus a `_search_index.js` file that holds the search index — works by just double-clicking the HTML, no Python needed afterward. Both files work with `file://` (no local server required).
 ![main page](example\1.png)
 
