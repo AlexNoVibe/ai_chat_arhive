@@ -14,7 +14,7 @@ No server, no database, no account, no internet connection required. Just a scri
 - 🎛️ **Advanced Model Filtering**: A hierarchical model filter allows you to easily toggle specific AI models (like GPT-4, Claude, DeepSeek) to hide or show their messages along with the corresponding user requests.
 - 🛠️ **Auto-repairs** mildly broken JSON (trailing commas, stray characters) so messy exports don't get silently dropped
 - 🌐 Generates **two files**: a self-contained `.html` file with every chat, a sidebar, and built-in search, plus a `_search_index.js` file that holds the search index — works by just double-clicking the HTML, no Python needed afterward. Both files work with `file://` (no local server required).
-![main page](example\1.png)
+![main page](example/1.png)
 
 ## 🔒 Privacy
 
