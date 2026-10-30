@@ -1,4 +1,4 @@
-# ai_chat_archive 🧵
+# AI Chat Archive 🗃️
 
 A single Python script that collects exported chat JSON files from various AI chat services and weaves them into one searchable, offline HTML archive.
 
