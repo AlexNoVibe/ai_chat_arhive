@@ -1,6 +1,6 @@
-# AI Chat Archive 🗃️
+# ai_chat_archive 🧵
 
-A powerful, zero-dependency Python script that collects exported chat JSON files from various AI chat services and weaves them into one searchable, filterable, offline HTML archive.
+A single Python script that collects exported chat JSON files from various AI chat services and weaves them into one searchable, offline HTML archive.
 
 No server, no database, no account, no internet connection required. Just a script and a browser.
 
@@ -8,11 +8,10 @@ No server, no database, no account, no internet connection required. Just a scri
 
 ## ✨ What it does
 
-- 📂 **Recursively scans** a folder (and all subfolders) for `.json` files
-- 🔍 **Auto-detects** which AI service each file came from, even when field names differ wildly between exports
-- 🧩 **Normalizes everything** into one consistent shape: chat title, model, messages, roles, timestamps, attachments
-- 🎛️ **Advanced Model Filtering**: A hierarchical model filter allows you to easily toggle specific AI models (like GPT-4, Claude, DeepSeek) to hide or show their messages along with the corresponding user requests.
-- 🛠️ **Auto-repairs** mildly broken JSON (trailing commas, stray characters) so messy exports don't get silently dropped
+- 📂 Recursively scans a folder (and all subfolders) for `.json` files
+- 🔍 Auto-detects which AI service each file came from, even when field names differ wildly between exports
+- 🧩 Normalizes everything into one consistent shape: chat title, model, messages, roles, timestamps, attachments
+- 🛠️ Auto-repairs mildly broken JSON (trailing commas, stray characters) so messy exports don't get silently dropped
 - 🌐 Generates **two files**: a self-contained `.html` file with every chat, a sidebar, and built-in search, plus a `_search_index.js` file that holds the search index — works by just double-clicking the HTML, no Python needed afterward. Both files work with `file://` (no local server required).
 ![main page](example\1.png)
 
@@ -85,6 +84,35 @@ DEFAULT_ON_UNKNOWN: str = "try"              # "try" | "ignore"
 | `DEFAULT_ON_UNKNOWN` | `--on-unknown {try,ignore}` | `try` (default): unrecognized JSON files get a best-effort generic parse instead of being skipped. `ignore`: unrecognized files are silently skipped. |
 
 **Example:** if you set `DEFAULT_TOOLTIPS = True` in the config but run with no flags, tooltips will be on. If you then run `python ai_chat_archive.py --tooltips` it's already on either way — but the flag lets you flip it on for one run without editing the file, e.g. `python ai_chat_archive.py -v --on-unknown ignore` for a quick noisy/strict pass.
+
+---
+
+## 🧹 Duplicate Archive Detector (`find_duplicate_archives.py`)
+
+If you periodically export your chats (e.g. monthly ChatGPT or Claude exports), newer exports often duplicate older archives completely or partially. Keeping duplicate files clutters your storage and results in repeated conversations in the final HTML archive.
+
+`find_duplicate_archives.py` is a standalone utility that identifies archives whose records are **100% contained** within another (newer or more complete) archive.
+
+### Features
+- 🔍 **Strict Zero-Risk Verification**: Checks every message (roles, order, normalized text) and conversation IDs. An archive is only marked as a duplicate if 100% of its content is preserved in another file. Partial overlaps are flagged to prevent accidental deletion of unique records.
+- ⚡ **High Performance & Progress**: Displays real-time progress indicators during scanning and pairwise comparison. Uses fast $O(1)$ indexed candidate lookups.
+- 📦 **Safe Backup by Default**: When deletion is requested, duplicate files are moved into a `_duplicates_backup/` directory instead of being permanently removed.
+- 🔒 **Mandatory Confirmation**: Requires typing the exact confirmation keyword (`УДАЛИТЬ` or `DELETE`) to execute.
+
+### Usage
+```bash
+# 1. Audit only (safe read-only inspection, no files modified)
+python find_duplicate_archives.py ./chat_export
+
+# 2. Move full duplicates to _duplicates_backup (with keyword confirmation)
+python find_duplicate_archives.py --delete
+
+# 3. Step-by-step interactive confirmation for each file
+python find_duplicate_archives.py --delete -i
+
+# 4. Permanent deletion (requires typing 'УДАЛИТЬ' or 'DELETE')
+python find_duplicate_archives.py --delete --permanent
+```
 
 ---
 
