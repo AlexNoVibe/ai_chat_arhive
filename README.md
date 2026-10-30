@@ -4,6 +4,8 @@ A single Python script that collects exported chat JSON files from various AI ch
 
 No server, no database, no account, no internet connection required. Just a script and a browser.
 
+![main page](example/1.png)
+
 ---
 
 ## ✨ What it does
@@ -13,7 +15,7 @@ No server, no database, no account, no internet connection required. Just a scri
 - 🧩 Normalizes everything into one consistent shape: chat title, model, messages, roles, timestamps, attachments
 - 🛠️ Auto-repairs mildly broken JSON (trailing commas, stray characters) so messy exports don't get silently dropped
 - 🌐 Generates **two files**: a self-contained `.html` file with every chat, a sidebar, and built-in search, plus a `_search_index.js` file that holds the search index — works by just double-clicking the HTML, no Python needed afterward. Both files work with `file://` (no local server required).
-![main page](example\1.png)
+
 
 ## 🔒 Privacy
 
